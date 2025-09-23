@@ -62,7 +62,7 @@ class DecayingEpsilonGreedy(Solver):
 
     def run_one_step(self):
         self.total_count += 1
-        if np.random.rand() < 1/ self.total_count:
+        if np.random.rand() < 1 / self.total_count:
             k = np.random.randint(0, self.bandit.K)
         else:
             k = np.argmax(self.estimates)
@@ -85,6 +85,24 @@ def plot_results(solvers, solver_names):
     plt.savefig('bernoulli_bandit.png')
     #plt.show()    
 
+class UCB(Solver):
+    def __init__(self, bandit, coef, init_prob=1.0):
+        super(UCB, self).__init__(bandit)
+        self.coef = coef
+        self.estimates = np.array([init_prob] * self.bandit.K)
+        self.total_count = 0
+
+    def run_one_step(self):
+        self.total_count += 1
+        ucb = self.estimates+ self.coef * np.sqrt(np.log(self.total_count)/(2*(self.counts+1)))
+        k = np.argmax(ucb)  # 选择未尝试过的动作
+        print("estimates ",np.argmax(self.estimates))
+        print("ucb ",k)
+       
+        r = self.bandit.step(k)  # 得到本次动作的奖励
+        self.estimates[k] += 1. / (self.counts[k] + 1) * (r - self.estimates[k])
+        return k
+
 
 np.random.seed(1)
 K = 10
@@ -96,14 +114,14 @@ epsilon_greedy_solver.run(5000)
 print('epsilon-贪婪算法的累积懊悔为：', epsilon_greedy_solver.regret)
 plot_results([epsilon_greedy_solver], ["EpsilonGreedy"])
 '''
-
+'''
 np.random.seed(1)
 decaying_epsilon_greedy_solver = DecayingEpsilonGreedy(bandit_10_arm)
 decaying_epsilon_greedy_solver.run(5000)
 print('epsilon值衰减的贪婪算法的累积懊悔为：', decaying_epsilon_greedy_solver.regret)
 plot_results([decaying_epsilon_greedy_solver], ["DecayingEpsilonGreedy"])
 
-'''
+
 epsilons = [1e-4, 0.01, 0.1, 0.25, 0.5]
 epsilon_greedy_solver_list = [
     EpsilonGreedy(bandit_10_arm, epsilon=e) for e in epsilons
@@ -114,3 +132,10 @@ for solver in epsilon_greedy_solver_list:
 
 plot_results(epsilon_greedy_solver_list, epsilon_greedy_solver_names)
 '''
+
+np.random.seed(1)
+coef = 1  # 控制不确定性比重的系数
+UCB_solver = UCB(bandit_10_arm, coef)
+UCB_solver.run(5000)
+print('上置信界算法的累积懊悔为：', UCB_solver.regret)
+plot_results([UCB_solver], ["UCB"])
